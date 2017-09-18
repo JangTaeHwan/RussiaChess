@@ -30,6 +30,7 @@ struct TurnState {
 struct Move {
     int target;
     int point;
+    int origin;
 };
 
 using StateMap = std::map<int, State>;
@@ -137,13 +138,28 @@ inline bool checkWinning(
     const Move& m,
     short& priority)
 {
+    bool otherSpare = false;
     Container map(10, 0);
+
     for(int i=0; i<pieceSize; i++) {
         map[ours[i]] = 1;
         map[others[i]] = 2;
 
+        if (others[i] == 0)
+            otherSpare = true;
+
         if (ours[i] > 0)
             priority++;
+    }
+
+    if (map[m.origin] ==2) {
+        for (const auto& points : bingoSet[m.origin]) {
+            if (map[points.first] == 2
+                && map[points.second] == 2) {
+                priority = -1;
+                return false;
+            }
+        }
     }
 
     for (const auto& points : bingoSet[m.point]) {
@@ -151,6 +167,22 @@ inline bool checkWinning(
             && map[points.second] == 1)
             return true;
     }
+
+    if (not otherSpare)
+        return false;
+
+    for(int i=1; i<=9; i++) {
+        if (map[i] != 0) continue;
+
+        for (const auto& points : bingoSet[i]) {
+            if (map[points.first] == 2
+                && map[points.second] == 2) {
+                priority = -1;
+                return false;
+            }
+        }
+    }
+
     return false;
 }
 

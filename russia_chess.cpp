@@ -36,6 +36,7 @@ TurnState executeTurn(int ourNum, int otherNum, Move m) {
         return ret;
     }
 
+    m.origin = ours[m.target];
     ours[m.target] = m.point;
     ret.nextNum = encodePieces(ours);
 
@@ -64,12 +65,14 @@ State dfs(int ourNum, int otherNum) {
     std::vector<NextInfo> nexts;
     for (int target : targetPriority) {
         for (int point : pointPriority) {
-            Move m = { target, point };
+            Move m = { target, point, 0 };
             TurnState temp = executeTurn(ourNum, otherNum, m);
 
             if (temp.state == State::Notvalid) {
                 continue;
             } else if (temp.state == State::Normal) {
+                if (temp.priority < 0)
+                    continue;
                 nexts.push_back({temp.priority, temp.nextNum});
             } else if (temp.state == State::Win) {
                 ret = State::Win;
