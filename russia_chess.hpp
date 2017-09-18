@@ -31,7 +31,8 @@ struct Move {
     int point;
 };
 
-using TurnStateMap = std::map<int, TurnState>;
+using StateMap = std::map<int, State>;
+using NextMap = std::map<int, int>;
 using Container = std::vector<short>;
 using Point = std::pair<short, short>;
 
@@ -61,8 +62,15 @@ const std::vector<Container> sameMapSet =
 { 0,9,6,3,8,5,2,7,4,1 },
 };
 
+const std::vector<int> targetPriority =
+{ 0,4,5,1,2,3 };
+
+const std::vector<int> pointPriority =
+{ 5,1,3,7,9,2,4,8,6 };
+
 // 현재 턴일때 승부결과와 다음 수 저장
-TurnStateMap turnStates[positionSize];
+StateMap stateMap[positionSize];
+NextMap nextMap[positionSize];
 
 std::vector<Point> intToPoint(60);
 int pointToInt[10][10];    //  [min][max];
@@ -109,10 +117,12 @@ inline bool checkValid(
     const Container& others,
     const Move& m)
 {
+    int targetNum = ours[m.target] > 0 ? ours[m.target] : -1;
     int start = m.target % 2 == 1 ? m.target : m.target - 1;
     for (int i=start; i<pieceSize; i++) {
         if (ours[i] == m.point
-            || others[i] == m.point) {
+            || others[i] == m.point
+            || others[i] == targetNum) {
             return false;
         }
     }

@@ -1,7 +1,9 @@
 #include "russia_chess.hpp"
 
+#include <sys/resource.h>
+
 void encodeTest() {
-    Container pieces = {8, 9, 6, 7, 1, 2};
+    Container pieces = {0, 5, 0, 0, 0, 0};
 
     int encodeNum = encodePieces(pieces);
     std::cout << encodeNum << std::endl;
@@ -10,6 +12,18 @@ void encodeTest() {
     for(const auto& v : result)
         std::cout << v << " ";
     std::cout << std::endl;
+}
+
+void setStackSize(int megabytes) {
+    struct rlimit rlim;
+
+    getrlimit( RLIMIT_STACK, &rlim );
+    printf( "Current Stack Size : [%d] Max Current Stack Size : [%d]\n", rlim.rlim_cur, rlim.rlim_max );
+
+    rlim.rlim_cur = (1024 * 1024 * megabytes);
+    rlim.rlim_max = (1024 * 1024 * megabytes);
+    setrlimit( RLIMIT_STACK, &rlim );
+    printf( "Current Stack Size : [%d] Max Current Stack Size : [%d]\n", rlim.rlim_cur, rlim.rlim_max );
 }
 
 TurnState executeTurn(int ourNum, int otherNum, Move m) {
@@ -31,17 +45,17 @@ TurnState executeTurn(int ourNum, int otherNum, Move m) {
     return ret;
 }
 
-TurnState dfs(int ourNum, int otherNum) {
+State dfs(int ourNum, int otherNum) {
     bool winningCond = false;
     TurnState ret{ 0, State::Processing };
 
-    auto it = turnStates[ourNum].find(otherNum);
-    if (it != turnStates[ourNum].end())
+    auto it = stateMap[ourNum].find(otherNum);
+    if (it != stateMap[ourNum].end())
         return it->second;
 
     std::vector<int> nextNums;
-    for (int target=0; target < pieceSize; target++) {
-        for (int point=1; point < mapSize; point++) {
+    for (int target : targetPriority) {
+        for (int point : pointPriority) {
             Move m = { target, point };
             TurnState temp = executeTurn(ourNum, otherNum, m);
 
@@ -67,14 +81,13 @@ TurnState dfs(int ourNum, int otherNum) {
             int sameOurNum = sameOurNums[i];
             int sameOtherNum = sameOtherNums[i];
 
-            turnStates[sameOurNum][sameOtherNum] =
-                { 0, State::Processing };
+            stateMap[sameOurNum][sameOtherNum] = State::Processing;
         }
 
         for (int nextNum : nextNums) {
             auto temp = dfs(otherNum, nextNum);
 
-            if (temp.state == State::Lose) {
+            if (temp == State::Lose) {
                 ret = { nextNum, State::Win };
                 winningCond = true;
                 break;
@@ -89,28 +102,31 @@ TurnState dfs(int ourNum, int otherNum) {
             int sameOtherNum = sameOtherNums[i];
             int sameNextNum = sameNextNums[i];
 
-            turnStates[sameOurNum][sameOtherNum] =
-                { sameNextNum, State::Win };
+            stateMap[sameOurNum][sameOtherNum] = State::Win;
+            nextMap[sameOurNum][sameOtherNum] = sameNextNum;
         }
     } else {
         for (int i=0; i<sameMapSet.size(); i++) {
             int sameOurNum = sameOurNums[i];
             int sameOtherNum = sameOtherNums[i];
 
-            turnStates[sameOurNum][sameOtherNum] =
-                { 0, State::Lose };
+            stateMap[sameOurNum][sameOtherNum] = State::Lose;
         }
     }
 
-    return ret;
+    return ret.state;
 }
 
-
 void calcAll() {
-    dfs(0, 0);
+    if (dfs(0, 5) == State::Win) {
+        std::cout << "Second win" << std::endl;
+    } else {
+        std::cout << "First win" << std::endl;
+    }
 }
 
 int main() {
+    setStackSize(1024);
     initPointDict();
     encodeTest();
     calcAll();
