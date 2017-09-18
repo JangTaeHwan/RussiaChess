@@ -23,6 +23,7 @@ enum class State {
 
 struct TurnState {
     int nextNum = 0;
+    short priority = 0;
     State state = State::Normal;
 };
 
@@ -33,6 +34,7 @@ struct Move {
 
 using StateMap = std::map<int, State>;
 using NextMap = std::map<int, int>;
+using NextInfo = std::pair<short, int>; // priority, nextNum
 using Container = std::vector<short>;
 using Point = std::pair<short, short>;
 
@@ -69,8 +71,8 @@ const std::vector<int> pointPriority =
 { 5,1,3,7,9,2,4,8,6 };
 
 // 현재 턴일때 승부결과와 다음 수 저장
-StateMap stateMap[positionSize];
-NextMap nextMap[positionSize];
+StateMap stateMap[positionSize];  // stateMap[ourNum][otherNum] = state;
+NextMap nextMap[positionSize];    // nextMap[ourNum][otherNum] = nextNum;
 
 std::vector<Point> intToPoint(60);
 int pointToInt[10][10];    //  [min][max];
@@ -132,12 +134,16 @@ inline bool checkValid(
 inline bool checkWinning(
     const Container& ours,
     const Container& others,
-    const Move& m)
+    const Move& m,
+    short& priority)
 {
     Container map(10, 0);
     for(int i=0; i<pieceSize; i++) {
         map[ours[i]] = 1;
         map[others[i]] = 2;
+
+        if (ours[i] > 0)
+            priority++;
     }
 
     for (const auto& points : bingoSet[m.point]) {

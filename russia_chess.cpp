@@ -39,21 +39,29 @@ TurnState executeTurn(int ourNum, int otherNum, Move m) {
     ours[m.target] = m.point;
     ret.nextNum = encodePieces(ours);
 
-    if (checkWinning(ours, others, m))
+    short priority = 0;
+    if (checkWinning(ours, others, m, priority)) {
         ret.state = State::Win;
+    } else {
+        ret.priority = priority;
+    }
 
     return ret;
 }
 
 State dfs(int ourNum, int otherNum) {
+    State ret = State::Processing;
+    int nextNum = 0;
     bool winningCond = false;
-    TurnState ret{ 0, State::Processing };
 
     auto it = stateMap[ourNum].find(otherNum);
     if (it != stateMap[ourNum].end())
         return it->second;
 
-    std::vector<int> nextNums;
+    static int count = 0;
+    std::cout << ++count << std::endl;
+
+    std::vector<NextInfo> nexts;
     for (int target : targetPriority) {
         for (int point : pointPriority) {
             Move m = { target, point };
@@ -62,9 +70,10 @@ State dfs(int ourNum, int otherNum) {
             if (temp.state == State::Notvalid) {
                 continue;
             } else if (temp.state == State::Normal) {
-                nextNums.push_back(temp.nextNum);
+                nexts.push_back({temp.priority, temp.nextNum});
             } else if (temp.state == State::Win) {
-                ret = temp;
+                ret = State::Win;
+                nextNum = temp.nextNum;
                 winningCond = true;
                 break;
             }
@@ -84,11 +93,16 @@ State dfs(int ourNum, int otherNum) {
             stateMap[sameOurNum][sameOtherNum] = State::Processing;
         }
 
-        for (int nextNum : nextNums) {
-            auto temp = dfs(otherNum, nextNum);
+        std::sort(nexts.begin(), nexts.end(), [](auto &lhs, auto &rhs) {
+            return lhs.first > rhs.first;
+        });
+
+        for (const auto& next : nexts) {
+            auto temp = dfs(otherNum, next.second);
 
             if (temp == State::Lose) {
-                ret = { nextNum, State::Win };
+                ret = State::Win;
+                nextNum = next.second;
                 winningCond = true;
                 break;
             }
@@ -96,7 +110,7 @@ State dfs(int ourNum, int otherNum) {
     }
 
     if (winningCond) {
-        auto sameNextNums = samePieces(ret.nextNum);
+        auto sameNextNums = samePieces(nextNum);
         for (int i=0; i<sameMapSet.size(); i++) {
             int sameOurNum = sameOurNums[i];
             int sameOtherNum = sameOtherNums[i];
@@ -114,7 +128,7 @@ State dfs(int ourNum, int otherNum) {
         }
     }
 
-    return ret.state;
+    return ret;
 }
 
 void calcAll() {
